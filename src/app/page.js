@@ -1,8 +1,11 @@
-import InboxPage from "./inbox/page";
+
+import InboxPage from "@/components/InboxPage/InboxPage";
 import ProtectedPage from "@/components/ProtectedPage/ProtectedPage";
 
 export default function HomePage() {
-   <ProtectedPage>
+  return (
+    <ProtectedPage>
       <InboxPage />
     </ProtectedPage>
+  );
 }

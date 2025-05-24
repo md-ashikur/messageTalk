@@ -1,10 +1,11 @@
 'use client';
 
+
 import { useState } from "react";
 import Link from "next/link";
 
-export default function LoginPage() {
-  const [form, setForm] = useState({ username: "", password: "" });
+export default function RegisterPage() {
+  const [form, setForm] = useState({ username: "", password: "", confirm: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -14,18 +15,22 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    if (form.password !== form.confirm) {
+      setError("Passwords do not match");
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await fetch("/api/login", {
+      const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ username: form.username, password: form.password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-      // Redirect or set session here
-      window.location.href = "/";
+      if (!res.ok) throw new Error(data.message || "Registration failed");
+      // Redirect or notify success
+      window.location.href = "/login";
     } catch (err) {
       setError(err.message);
     }
@@ -36,7 +41,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-500 via-purple-500 to-indigo-600">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">
-          Sign In
+          Register
         </h2>
         <form onSubmit={handleSubmit} className="space-y-5 text-black">
           <div>
@@ -60,7 +65,19 @@ export default function LoginPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-2 rounded bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              autoComplete="current-password"
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Confirm Password</label>
+            <input
+              name="confirm"
+              type="password"
+              value={form.confirm}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 rounded bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              autoComplete="new-password"
             />
           </div>
           {error && (
@@ -71,13 +88,13 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition"
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? "Registering..." : "Register"}
           </button>
         </form>
         <div className="text-center text-gray-800 text-sm mt-4">
-          Don&apos;t have an account? 
-          <Link href="/register" className="text-indigo-600 font-semibold hover:underline">
-             Register
+          Already have an account?{" "}
+          <Link href="/login" className="text-indigo-600 font-semibold hover:underline">
+            Login
           </Link>
         </div>
       </div>
