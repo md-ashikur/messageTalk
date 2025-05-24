@@ -28,9 +28,10 @@ export default function InboxPage() {
   }, []);
 
   // Fetch messages whenever selectedId changes
-  useEffect(() => {
-  if (selectedId) {
-    setLoadingMessages(true);
+ // Real-time polling for messages
+useEffect(() => {
+  if (!selectedId) return;
+  const interval = setInterval(() => {
     fetch(`/api/messages?userId=${selectedId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -44,9 +45,10 @@ export default function InboxPage() {
             }),
           }))
         );
-        setLoadingMessages(false);
       });
-  }
+  }, 2000); // fetch every 2 seconds
+
+  return () => clearInterval(interval);
 }, [selectedId]);
 
   
