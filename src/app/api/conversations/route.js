@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
+import { decrypt } from "../../../../lib/crypto";
 
 export async function GET(request) {
   try {
@@ -23,19 +24,25 @@ export async function GET(request) {
       [userId, userId, userId, userId, userId]
     );
 
-    // Convert Buffer to string if needed for lastMessage
-    const conversations = rows.map(conv => ({
-      ...conv,
-      lastMessage: conv.lastMessage
-        ? (typeof conv.lastMessage === "object" && conv.lastMessage !== null && Buffer.isBuffer(conv.lastMessage)
-            ? conv.lastMessage.toString("utf8")
-            : conv.lastMessage)
-        : ""
-    }));
+    const conversations = rows.map(conv => {
+      let lastMessage = conv.lastMessage;
+      if (lastMessage) {
+        if (typeof lastMessage === "object" && lastMessage !== null && Buffer.isBuffer(lastMessage)) {
+          lastMessage = lastMessage.toString("utf8");
+        }
+        lastMessage = decrypt(lastMessage);
+      } else {
+        lastMessage = "";
+      }
+      return {
+        ...conv,
+        lastMessage,
+      };
+    });
 
     return NextResponse.json({ conversations });
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/conversations error:", err);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

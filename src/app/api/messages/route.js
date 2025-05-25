@@ -1,29 +1,26 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-// import your encryption function if you have it
+import { encrypt, decrypt } from "../../../../lib/crypto";
 
 export async function POST(request) {
   try {
     const { receiverId, content } = await request.json();
-
-    // Get senderId from session cookie
     const session = request.cookies.get("session");
     if (!session) {
       return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
     }
     const senderId = Number(session.value);
 
-    // If you have AES encryption, encrypt content here, e.g.:
-    // const encryptedContent = encrypt(content);
-
+    // Encrypt content before storing
+    const encryptedContent = encrypt(content);
     await db.query(
       "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
-      [senderId, receiverId, content] // use encryptedContent if encrypting
+      [senderId, receiverId, encryptedContent]
     );
 
     return NextResponse.json({ message: "Message sent" });
   } catch (err) {
-    console.error(err);
+    console.error("POST /api/messages error:", err);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
@@ -48,16 +45,19 @@ export async function GET(request) {
       [userId, otherUserId, otherUserId, userId]
     );
 
-   const messages = rows.map(msg => ({
-  ...msg,
-  content: typeof msg.content === "object" && msg.content !== null && Buffer.isBuffer(msg.content)
-    ? msg.content.toString("utf8")
-    : msg.content,
-}));
+    // Decrypt message content
+    const messages = rows.map(msg => ({
+      ...msg,
+      content: decrypt(
+        typeof msg.content === "object" && msg.content !== null && Buffer.isBuffer(msg.content)
+          ? msg.content.toString("utf8")
+          : msg.content
+      ),
+    }));
 
-return NextResponse.json({ messages, currentUserId: userId });
+    return NextResponse.json({ messages, currentUserId: userId });
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/messages error:", err);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

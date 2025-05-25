@@ -27,11 +27,12 @@ export default function InboxPage() {
       });
   }, []);
 
-  // Fetch messages whenever selectedId changes
- // Real-time polling for messages
-useEffect(() => {
-  if (!selectedId) return;
-  const interval = setInterval(() => {
+  // Real-time polling for messages
+  useEffect(() => {
+    if (!selectedId) return;
+    setLoadingMessages(true);
+
+    // Initial fetch
     fetch(`/api/messages?userId=${selectedId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -45,19 +46,36 @@ useEffect(() => {
             }),
           }))
         );
+        setLoadingMessages(false);
       });
-  }, 2000); // fetch every 2 seconds
 
-  return () => clearInterval(interval);
-}, [selectedId]);
+    // Polling
+    const interval = setInterval(() => {
+      fetch(`/api/messages?userId=${selectedId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setMessages(
+            (data.messages || []).map((msg) => ({
+              fromMe: msg.sender_id === data.currentUserId,
+              text: msg.content,
+              time: new Date(msg.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }))
+          );
+        });
+    }, 2000);
 
-  
-// users-----------------
-useEffect(() => {
-  fetch("/api/users")
-    .then((res) => res.json())
-    .then((data) => setAllUsers(data.users || []));
-}, []);
+    return () => clearInterval(interval);
+  }, [selectedId]);
+
+  // users-----------------
+  useEffect(() => {
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((data) => setAllUsers(data.users || []));
+  }, []);
 
   // Scroll to end on new messages
   useEffect(() => {
@@ -72,35 +90,19 @@ useEffect(() => {
   };
 
   // Send message to backend
- const handleSend = async (e) => {
-  e.preventDefault();
-  if (!message.trim() || !selectedId) return;
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || !selectedId) return;
 
-  // Send message to backend
-  await fetch("/api/messages", {
-    method: "POST",
-    body: JSON.stringify({ receiverId: selectedId, content: message }),
-    headers: { "Content-Type": "application/json" },
-  });
-
-  // Optionally: Re-fetch messages for this conversation
-  fetch(`/api/messages?userId=${selectedId}`)
-    .then((res) => res.json())
-    .then((data) => {
-      setMessages(
-        (data.messages || []).map((msg) => ({
-          fromMe: msg.sender_id === data.currentUserId,
-          text: msg.content,
-          time: new Date(msg.created_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        }))
-      );
+    // Send message to backend
+    await fetch("/api/messages", {
+      method: "POST",
+      body: JSON.stringify({ receiverId: selectedId, content: message }),
+      headers: { "Content-Type": "application/json" },
     });
 
-  setMessage("");
-};
+    setMessage("");
+  };
 
   return (
     <div className="flex h-screen bg-gradient-to-tr from-blue-50 via-purple-50 to-indigo-100">
@@ -130,29 +132,28 @@ useEffect(() => {
           </button>
         </div>
         <div className="px-6 py-3 border-b">
-  <div className="font-semibold text-indigo-600 mb-2">Start new chat</div>
-  <div className="space-y-1">
-    {allUsers.map((user) => (
-      <button
-        key={user.id}
-        className="block w-full text-left px-2 py-1 hover:bg-indigo-50 rounded transition text-gray-700"
-        onClick={() => {
-          // Check if conversation exists; if not, create/start one
-          // For now, just select this user (show their conversation or create new)
-          let conv = conversations.find((c) => c.id === user.id);
-          if (!conv) {
-            conv = { id: user.id, username: user.username, lastMessage: "", unread: 0 };
-            setConversations((prev) => [conv, ...prev]);
-          }
-          setSelectedId(user.id);
-          setSidebarOpen(false);
-        }}
-      >
-        {user.username}
-      </button>
-    ))}
-  </div>
-</div>
+          <div className="font-semibold text-indigo-600 mb-2">Start new chat</div>
+          <div className="space-y-1">
+            {allUsers.map((user) => (
+              <button
+                key={user.id}
+                className="block w-full text-left px-2 py-1 hover:bg-indigo-50 rounded transition text-gray-700"
+                onClick={() => {
+                  // Check if conversation exists; if not, create/start one
+                  let conv = conversations.find((c) => c.id === user.id);
+                  if (!conv) {
+                    conv = { id: user.id, username: user.username, lastMessage: "", unread: 0 };
+                    setConversations((prev) => [conv, ...prev]);
+                  }
+                  setSelectedId(user.id);
+                  setSidebarOpen(false);
+                }}
+              >
+                {user.username}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="p-4 border-t text-sm text-gray-500">
           <span className="font-semibold">You</span>
         </div>
